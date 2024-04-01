@@ -1,5 +1,5 @@
 /**
- * 's7': snap7 wrapper to communicate with Siemens PLC (S7) 
+ * 's7': snap7 wrapper to communicate with Siemens PLC (S7)
  */
 
 var snap7;
@@ -9,8 +9,9 @@ const deviceUtils = require('../device-utils');
 
 const MAX_MIX_ITEM = 20;
 
-function S7client(_data, _logger, _events) {
+function S7client(_data, _logger, _events, _runtime) {
 
+    var runtime = _runtime;
     var db = {};                        // Loaded Signal in DB format { DB index, start, size, ... }
     var data = JSON.parse(JSON.stringify(_data));                   // Current Device data { id, name, tags, enabled, ... }
     var logger = _logger;               // Logger
@@ -92,7 +93,7 @@ function S7client(_data, _logger, _events) {
     }
 
     /**
-     * Read values in polling mode 
+     * Read values in polling mode
      * Update the tags values list, save in DAQ if value changed or in interval and emit values to clients
      */
     this.polling = function () {
@@ -219,12 +220,12 @@ function S7client(_data, _logger, _events) {
 
     /**
      * Set the Tag value
-     * Read the current Tag object, write the value in object and send to SPS 
+     * Read the current Tag object, write the value in object and send to SPS
      */
-    this.setValue = function (sigid, value) {
+    this.setValue = async function (sigid, value) {
         var item = _getTagItem(data.tags[sigid]);
         if (item) {
-            value = deviceUtils.tagRawCalculator(value, data.tags[sigid]);
+            value = await deviceUtils.tagRawCalculator(value, data.tags[sigid], runtime);
             item.value = value;
             _writeVars([item], (item instanceof DbItem)).then(result => {
                 logger.info(`'${data.name}' setValue(${sigid}, ${value})`, true, true);
@@ -259,7 +260,7 @@ function S7client(_data, _logger, _events) {
 
     /**
      * Return the timestamp of last read tag operation on polling
-     * @returns 
+     * @returns
      */
     this.lastReadTimestamp = () => {
         return lastTimestampValue;
@@ -267,7 +268,7 @@ function S7client(_data, _logger, _events) {
 
     /**
      * Return the Daq settings of Tag
-     * @returns 
+     * @returns
      */
     this.getTagDaqSettings = (tagId) => {
         return data.tags[tagId] ? data.tags[tagId].daq : null;
@@ -275,7 +276,7 @@ function S7client(_data, _logger, _events) {
 
     /**
      * Set Daq settings of Tag
-     * @returns 
+     * @returns
      */
     this.setTagDaqSettings = (tagId, settings) => {
         if (data.tags[tagId]) {
@@ -304,9 +305,9 @@ function S7client(_data, _logger, _events) {
 
     /**
      * Update the Tags values read
-     * @param {*} vars 
+     * @param {*} vars
      */
-    var _updateVarsValue = (vars) => {
+    var _updateVarsValue = async (vars) => {
         var someval = false;
         var tempTags = {};
         for (var vid in vars) {
@@ -357,7 +358,7 @@ function S7client(_data, _logger, _events) {
             var result = {};
             for (var id in tempTags) {
                 if (!utils.isNullOrUndefined(tempTags[id].rawValue)) {
-                    tempTags[id].value = deviceUtils.tagValueCompose(tempTags[id].rawValue, tempTags[id].tagref);
+                    tempTags[id].value = await deviceUtils.tagValueCompose(tempTags[id].rawValue, tempTags[id].tagref, runtime);
                     tempTags[id].timestamp = timestamp;
                     if (this.addDaq && deviceUtils.tagDaqToSave(tempTags[id], timestamp)) {
                         result[id] = tempTags[id];
@@ -391,7 +392,7 @@ function S7client(_data, _logger, _events) {
 
     /**
      * Emit the PLC Tags values array { id: <name>, value: <value>, type: <type> }
-     * @param {*} values 
+     * @param {*} values
      */
     var _emitValues = function (values) {
         events.emit('device-value:changed', { id: data.id, values: values });
@@ -399,7 +400,7 @@ function S7client(_data, _logger, _events) {
 
     /**
      * Emit the PLC connection status
-     * @param {*} status 
+     * @param {*} status
      */
     var _emitStatus = function (status) {
         lastStatus = status;
@@ -408,7 +409,7 @@ function S7client(_data, _logger, _events) {
 
     /**
      * Used to manage the async connection and polling automation (that not overloading)
-     * @param {*} check 
+     * @param {*} check
      */
     var _checkWorking = function (check) {
         if (check && working) {
@@ -448,19 +449,22 @@ function S7client(_data, _logger, _events) {
                 }
             });
             s7client.DBRead(DBNr, offset, end - offset, (err, res) => {
-                if (err) return _getErr(err);
-                vars.map(v => {
-                    let value = null;
-                    if (v.type === 'BOOL') {
-                        // check the full byte and send all bit if there is a change 
-                        value = datatypes['BYTE'].parser(res, v.Start - offset, -1);
-                    } else {
-                        value = datatypes[v.type].parser(res, v.Start - offset, v.bit);
-                    }
-                    v.changed = value !== v.value;
-                    v.value = value;
-                    return v;
-                });
+                if (err) {
+                    logger.error(`'${data.name}' ${err}: ${_getErr(err)}`, false);
+                } else {
+                    vars.map(v => {
+                        let value = null;
+                        if (v.type === 'BOOL') {
+                            // check the full byte and send all bit if there is a change
+                            value = datatypes['BYTE'].parser(res, v.Start - offset, -1);
+                        } else {
+                            value = datatypes[v.type].parser(res, v.Start - offset, v.bit);
+                        }
+                        v.changed = value !== v.value;
+                        v.value = value;
+                        return v;
+                    });
+                }
                 resolve(vars);
             });
         });
@@ -468,7 +472,7 @@ function S7client(_data, _logger, _events) {
 
     /**
      * Read multiple Vars
-     * @param {*} vars 
+     * @param {*} vars
      */
     var _readVars = function (vars) {
         return new Promise((resolve, reject) => {
@@ -482,7 +486,7 @@ function S7client(_data, _logger, _events) {
                     } else {
                         try {
                             if (v.type === 'BOOL') {
-                                // check the full byte and send all bit if there is a change 
+                                // check the full byte and send all bit if there is a change
                                 value = datatypes['BYTE'].parser(res[i].Data);//, v.Start, -1);
                             } else {
                                 value = datatypes[v.type].parser(res[i].Data);
@@ -571,7 +575,7 @@ function S7client(_data, _logger, _events) {
             if (variable) {
                 var prefix = variable.substring(0, 2);
                 if (prefix === 'DB') {
-                    // DB[n]"                    
+                    // DB[n]"
                     var startpos = variable.indexOf('.');
                     var dbNum = parseInt(variable.substring(2, startpos));
                     if (dbNum >= 0) {
@@ -661,7 +665,7 @@ function S7client(_data, _logger, _events) {
 
     /**
      * Return error message, from error code
-     * @param {*} s7err 
+     * @param {*} s7err
      */
     var _getErr = function (s7err) {
         if (Array.isArray(s7err)) return new Error('Errors: ' + s7err.join('; '));
@@ -673,12 +677,12 @@ module.exports = {
     init: function (settings) {
         // deviceCloseTimeout = settings.deviceCloseTimeout || 15000;
     },
-    create: function (data, logger, events, manager) {
+    create: function (data, logger, events, manager, runtime) {
         try { snap7 = require('node-snap7'); } catch { }
         if (!snap7 && manager) { try { snap7 = manager.require('node-snap7'); } catch { } }
         if (snap7) datatypes = require('./datatypes');
         else return null;
-        return new S7client(data, logger, events);
+        return new S7client(data, logger, events, runtime);
     }
 }
 

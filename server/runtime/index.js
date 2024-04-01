@@ -80,7 +80,7 @@ function init(_io, _api, _settings, _log, eventsMain) {
     events.on('script-console', scriptConsoleOutput);
 
     io.on('connection', async (socket) => {
-        logger.info(`socket.io client connected`);        
+        logger.info(`socket.io client connected`);
         socket.tagsClientSubscriptions = [];
         // check authorizations
         if (settings.secureEnabled && !settings.secureOnlyEditor) {
@@ -154,7 +154,7 @@ function init(_io, _api, _settings, _log, eventsMain) {
             try {
                 if (message) {
                     if (message.device) {
-                        devices.browseDevice(message.device, message.node, function (nodes) { 
+                        devices.browseDevice(message.device, message.node, function (nodes) {
                             io.emit(Events.IoEventTypes.DEVICE_BROWSE, nodes);
                         }).then(result => {
                             message.result = result;
@@ -302,6 +302,10 @@ function init(_io, _api, _settings, _log, eventsMain) {
             }
         });
     });
+
+    setInterval(() => {
+        io.emit(Events.IoEventTypes.ALIVE, { message: 'FUXA server is alive!' });
+    }, 10000);
 }
 
 function start() {
@@ -342,7 +346,7 @@ function start() {
             }).catch(function (err) {
                 logger.error('runtime.failed-to-start-jobs: ' + err);
                 reject();
-            });            
+            });
         }).catch(function (err) {
             logger.error('runtime.failed-to-start: ' + err);
             reject();
@@ -371,7 +375,7 @@ function stop() {
         jobsMgr.stop().then(function () {
         }).catch(function (err) {
             logger.error('runtime.failed-to-stop-jobsMgr: ' + err);
-        });        
+        });
         resolve(true);
     });
 }
@@ -463,9 +467,9 @@ function updateDeviceValues(event) {
                 });
             });
         } else {
-            io.emit(Events.IoEventTypes.DEVICE_VALUES, { 
+            io.emit(Events.IoEventTypes.DEVICE_VALUES, {
                 id: event.id,
-                values: Object.values(event.values) 
+                values: Object.values(event.values)
             });
         }
         tagsSubscription.forEach((key, value) => {
@@ -514,7 +518,7 @@ function updateAlarmsStatus() {
 
 /**
  * Trasmit the scripts console output
- * @param {*} output 
+ * @param {*} output
  */
 function scriptConsoleOutput(output) {
     try {

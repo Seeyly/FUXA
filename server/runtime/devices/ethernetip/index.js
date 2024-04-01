@@ -1,5 +1,5 @@
 /**
- * 'ethernetip': use nodePCCC a library that allows communication to certain Allen-Bradley PLCs - 
+ * 'ethernetip': use nodePCCC a library that allows communication to certain Allen-Bradley PLCs -
  * The SLC 500 series, Micrologix and ControlLogix/CompactLogix PLCs using PCCC embedded in Ethernet/IP
  */
 
@@ -8,12 +8,13 @@ var EthernetIp;
 const utils = require('../../utils');
 const deviceUtils = require('../device-utils');
 
-function EthernetIPclient(_data, _logger, _events) {
+function EthernetIPclient(_data, _logger, _events, _runtime) {
 
+    var runtime = _runtime;
     var data = JSON.parse(JSON.stringify(_data)); // Current Device data { id, name, tags, enabled, ... }
     var logger = _logger;
     var events = _events;               // Events to commit change to runtime
-    var lastStatus = '';                // Last Device status     
+    var lastStatus = '';                // Last Device status
     var working = false;                // Working flag to manage overloading polling and connection
     var conn = new EthernetIp;
     var doneReading = false;
@@ -24,7 +25,7 @@ function EthernetIPclient(_data, _logger, _events) {
     var varsValue = [];                 // Signale to send to frontend { id, type, value }
     var lastTimestampValue;             // Last Timestamp of asked values
     /**
-     * initialize the device type 
+     * initialize the device type
      */
     this.init = function (_type) {
         console.error('Not supported!');
@@ -108,7 +109,7 @@ function EthernetIPclient(_data, _logger, _events) {
     }
 
     /**
-     * Read values in polling mode 
+     * Read values in polling mode
      * Update the tags values list, save in DAQ if value changed or in interval and emit values to clients
      */
     this.polling = async function () {
@@ -155,7 +156,7 @@ function EthernetIPclient(_data, _logger, _events) {
                 // if (!itemsMap[data.tags[id].address]) {
                 //     itemsMap[data.tags[id].address] = [data.tags[id]];
                 // } else {
-                //     itemsMap[data.tags[id].address].push(data.tags[id]);   
+                //     itemsMap[data.tags[id].address].push(data.tags[id]);
                 // }
             }
             logger.info(`'${data.name}' data loaded (${count})`, true);
@@ -235,7 +236,7 @@ function EthernetIPclient(_data, _logger, _events) {
 
     /**
      * Return the timestamp of last read tag operation on polling
-     * @returns 
+     * @returns
      */
      this.lastReadTimestamp = () => {
         return lastTimestampValue;
@@ -243,7 +244,7 @@ function EthernetIPclient(_data, _logger, _events) {
 
     /**
      * Return the Daq settings of Tag
-     * @returns 
+     * @returns
      */
     this.getTagDaqSettings = (tagId) => {
         return data.tags[tagId] ? data.tags[tagId].daq : null;
@@ -251,7 +252,7 @@ function EthernetIPclient(_data, _logger, _events) {
 
     /**
      * Set Daq settings of Tag
-     * @returns 
+     * @returns
      */
     this.setTagDaqSettings = (tagId, settings) => {
         if (data.tags[tagId]) {
@@ -287,7 +288,7 @@ function EthernetIPclient(_data, _logger, _events) {
 
     /**
      * Update the Tags values read
-     * @param {*} vars 
+     * @param {*} vars
      */
     var _updateVarsValue = (vars) => {
         const timestamp = new Date().getTime();
@@ -332,16 +333,16 @@ function EthernetIPclient(_data, _logger, _events) {
 
     /**
      * Emit the PLC connection status
-     * @param {*} status 
+     * @param {*} status
      */
     var _emitStatus = function (status) {
         lastStatus = status;
         events.emit('device-status:changed', { id: data.id, status: status });
     }
-    
+
     /**
      * Emit the webapi Tags values array { id: <name>, value: <value>, type: <type> }
-     * @param {*} values 
+     * @param {*} values
      */
     var _emitValues = function (values) {
         events.emit('device-value:changed', { id: data.id, values: values });
@@ -349,7 +350,7 @@ function EthernetIPclient(_data, _logger, _events) {
 
     /**
      * Used to manage the async connection and polling automation (that not overloading)
-     * @param {*} check 
+     * @param {*} check
      */
     var _checkWorking = function (check) {
         if (check && working) {

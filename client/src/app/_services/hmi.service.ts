@@ -94,6 +94,7 @@ export class HmiService {
             if (device?.type === DeviceType.internal) {
                 this.variables[sigId].timestamp = new Date().getTime();
                 this.setSignalValue(this.variables[sigId]);
+                device.tags[sigId].value = value;
             } else {
                 this.socket.emit(IoEventTypes.DEVICE_VALUES, { cmd: 'set', var: this.variables[sigId], fnc: [fnc, value] });
             }
@@ -240,7 +241,9 @@ export class HmiService {
         this.socket.on(IoEventTypes.SCRIPT_COMMAND, (message) => {
             this.onScriptCommand(message);
         });
-
+        this.socket.on(IoEventTypes.ALIVE, (message) => {
+            this.onServerConnection$.next(true);
+        });
         this.askDeviceValues();
         this.askAlarmsStatus();
     }
@@ -257,7 +260,7 @@ export class HmiService {
     /**
      * Ask device status to backend
      */
-    public askDeviceProperty(endpoint, type) {
+    public askDeviceProperty(endpoint: EndPointSettings & any, type) {
         if (this.socket) {
             let msg = { endpoint: endpoint, type: type };
             this.socket.emit(IoEventTypes.DEVICE_PROPERTY, msg);
@@ -637,7 +640,8 @@ export enum IoEventTypes {
     ALARMS_STATUS = 'alarms-status',
     HOST_INTERFACES = 'host-interfaces',
     SCRIPT_CONSOLE = 'script-console',
-    SCRIPT_COMMAND = 'script-command'
+    SCRIPT_COMMAND = 'script-command',
+    ALIVE = 'heartbeat'
 }
 
 export const ScriptCommandEnum = {
@@ -652,4 +656,11 @@ export interface ScriptCommandMessage {
 export interface ScriptSetView {
     viewName: string;
     force: boolean;
+}
+
+export interface EndPointSettings {
+    address: string;
+    uid: string;
+    pwd: string;
+    id?: string;
 }

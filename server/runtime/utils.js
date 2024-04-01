@@ -9,7 +9,7 @@ var utils = module.exports = {
     domStringSplitter: function (src, tagsplitter, first) {
         var result = { before: '', tagcontent: '', after: '' };
         var tagStart = '<' + tagsplitter.toLowerCase();
-        var tagEnd = '</' + tagsplitter.toLowerCase(); 
+        var tagEnd = '</' + tagsplitter.toLowerCase();
         var text = src.toLowerCase();
         var start = text.indexOf(tagStart, first);
         var end = text.indexOf(tagEnd, start);
@@ -106,6 +106,14 @@ var utils = module.exports = {
         return (ele === null || ele === undefined) ? true : false;
     },
 
+    JsonTryToParse(value) {
+        try {
+            if (value) {
+                return JSON.parse(value);
+            }
+        } catch { }
+    },
+
     mergeObjectsValues: function (obj1, obj2) {
         if (typeof obj1 === 'object' && typeof obj2 === 'object') {
             for (let key in obj2) {
@@ -113,7 +121,7 @@ var utils = module.exports = {
                     obj1[key] = obj2[key];
                 }
             }
-        }    
+        }
         return obj1;
     },
 
@@ -220,6 +228,17 @@ var utils = module.exports = {
           chunks.push(array.slice(i, i + chunkSize));
         }
         return chunks;
+    },
+
+    extractArray: function (object) {
+        let index = 0;
+        const array = [];
+
+        while (object[index] !== undefined) {
+            array.push(object[index]);
+            index++;
+        }
+        return array;
     },
 
     getNetworkInterfaces: function () {

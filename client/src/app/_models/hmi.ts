@@ -1,3 +1,4 @@
+import { GridType } from 'angular-gridster2';
 import { Device, DeviceType, Tag } from './device';
 
 export class Hmi {
@@ -22,11 +23,17 @@ export class View {
     svgcontent = '';
     /** Type of view SVG/CARDS */
     type: ViewType;
+
+    constructor(id?: string, type?: ViewType, name?: string) {
+        this.id = id;
+        this.name = name;
+        this.type = type;
+    }
 }
 
 export enum ViewType {
-    svg = 'editor.view-svg',
-    cards ='editor.view-cards'
+    svg = 'svg',
+    cards ='cards'
 }
 
 export class LayoutSettings {
@@ -115,6 +122,7 @@ export class HeaderSettings {
     items: HeaderItem[];
     itemsAnchor: AnchorType = 'left';
     loginInfo: LoginInfoType;
+    dateTimeDisplay: string;
 }
 
 export interface HeaderItem {
@@ -166,6 +174,13 @@ export class DocProfile {
     height = 768;
     bkcolor = '#ffffffff';
     margin = 10;
+    align = DocAlignType.topCenter;
+    gridType: GridType = GridType.Fixed;
+}
+
+export enum DocAlignType {
+    topCenter = 'topCenter',
+    middleCenter ='middleCenter'
 }
 
 export class GaugeSettings {
@@ -197,6 +212,7 @@ export interface InputOptionsProperty {
     type?: InputOptionType;
     timeformat?: InputTimeFormatType;
     convertion?: InputConvertionType;
+    updatedEsc?: boolean;
 }
 
 export enum InputOptionType {
@@ -304,6 +320,7 @@ export enum GaugeEventType {
     mouseup = 'shapes.event-mouseup',
     enter = 'shapes.event-enter',
     select = 'shapes.event-select',
+    onLoad = 'shapes.event-onLoad',
 }
 
 export enum GaugeEventActionType {
@@ -317,6 +334,7 @@ export enum GaugeEventActionType {
     onSetInput = 'shapes.event-onsetinput',
     onclose = 'shapes.event-onclose',
     onRunScript = 'shapes.event-onrunscript',
+    onViewToPanel = 'shapes.event-onViewToPanel',
     onMonitor = 'shapes.event-onmonitor',
 }
 
@@ -340,6 +358,7 @@ export interface GaugeChartProperty {
     id: string;
     type: string;
     options: any;
+    events: GaugeEvent[];
 }
 
 export interface GaugeGraphProperty {
@@ -356,10 +375,10 @@ export interface GaugeIframeProperty {
 export interface GaugePanelProperty {
     viewName: string;
     variableId: string;
-    scaleMode: PanelPropertyScaleModeType;
+    scaleMode: PropertyScaleModeType;
 }
 
-export enum PanelPropertyScaleModeType {
+export enum PropertyScaleModeType {
     none = 'none',
     contain = 'contain',
     stretch = 'stretch'
@@ -369,6 +388,7 @@ export interface GaugeTableProperty {
     id: string;
     type: TableType;
     options: TableOptions;
+    events: GaugeEvent[];
 }
 
 export enum TableType {
@@ -386,6 +406,7 @@ export interface TableOptions {
     daterange: {
         show: boolean;
     };
+    realtime?: boolean;
     lastRange?: TableRangeType;
     gridColor?: string;
     header?: {
@@ -398,6 +419,11 @@ export interface TableOptions {
     row?: {
         height: number;
         fontSize?: number;
+        color?: string;
+        background?: string;
+    };
+    selection?: {
+        fontBold?: boolean;
         color?: string;
         background?: string;
     };
@@ -479,7 +505,6 @@ export class VariableRange {
 }
 
 export class Alarm extends Tag {
-    id: string;
     group: string;
     device: string;
 }
@@ -506,10 +531,10 @@ export class Event {
 }
 
 export class DaqQuery {
-    gid: string;
+    gid?: string;
     from: any;
     to: any;
-    event: string;
+    event?: string;
     sids: string[];
 }
 
@@ -538,11 +563,11 @@ export class Size {
     }
 }
 
-interface DictionaryGaugeSettings {
+export interface DictionaryGaugeSettings {
     [x: string]: GaugeSettings;
 }
 
-interface DictionaryVariables {
+export interface DictionaryVariables {
     [id: string]: Variable;
 }
 
@@ -563,6 +588,8 @@ export class CardWidget {
     data: string;
     type: string;
     zoom = 1;
+    scaleMode: PropertyScaleModeType;
+
     constructor(type: string, data: string) {
         this.type = type;
         this.data = data;
@@ -570,10 +597,10 @@ export class CardWidget {
 }
 
 export enum CardWidgetType {
-    view = 'card.widget-view',
-    alarms = 'card.widget-alarms',
-    iframe = 'card.widget-iframe',
-    table = 'card.widget-table',
+    view = 'view',
+    alarms = 'alarms',
+    iframe = 'iframe',
+    table = 'table',
 }
 
 export enum LinkType {

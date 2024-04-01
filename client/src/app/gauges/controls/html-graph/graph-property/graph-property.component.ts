@@ -1,5 +1,5 @@
 import { Component, EventEmitter, OnInit, Input, Output, OnDestroy } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
+import { MatLegacyDialog as MatDialog } from '@angular/material/legacy-dialog';
 import { UntypedFormControl } from '@angular/forms';
 import { takeUntil } from 'rxjs/operators';
 import { Subject, ReplaySubject } from 'rxjs';
@@ -17,7 +17,7 @@ import { GraphPieComponent } from '../graph-pie/graph-pie.component';
 @Component({
     selector: 'app-graph-property',
     templateUrl: './graph-property.component.html',
-    styleUrls: ['./graph-property.component.css']
+    styleUrls: ['./graph-property.component.scss']
 })
 export class GraphPropertyComponent implements OnInit, OnDestroy {
 

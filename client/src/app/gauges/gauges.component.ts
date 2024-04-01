@@ -2,7 +2,7 @@ import { Injectable, Output, EventEmitter } from '@angular/core';
 import { HmiService } from '../_services/hmi.service';
 import { ChartRangeType, ChartViewType } from '../_models/chart';
 
-import { GaugeSettings, Variable, Event, GaugeEvent, GaugeEventType, GaugeStatus, Size, DaqQuery } from '../_models/hmi';
+import { GaugeSettings, Variable, Event, GaugeEvent, GaugeEventType, GaugeStatus, Size, DaqQuery, TableType } from '../_models/hmi';
 import { ValueComponent } from './controls/value/value.component';
 import { GaugeDialogType } from './gauge-property/gauge-property.component';
 import { HtmlInputComponent } from './controls/html-input/html-input.component';
@@ -61,7 +61,8 @@ export class GaugesManager {
     static GaugeWithProperty = [HtmlInputComponent.prefix, HtmlSelectComponent.prefix, HtmlSwitchComponent.prefix];
     // list of gauges tags to check who as events like mouse click
     static GaugeWithEvents = [HtmlButtonComponent.TypeTag, GaugeSemaphoreComponent.TypeTag, ShapesComponent.TypeTag, ProcEngComponent.TypeTag,
-        ApeShapesComponent.TypeTag, HtmlImageComponent.TypeTag, HtmlInputComponent.TypeTag, PanelComponent.TypeTag, HtmlSelectComponent.TypeTag];
+        ApeShapesComponent.TypeTag, HtmlImageComponent.TypeTag, HtmlInputComponent.TypeTag, PanelComponent.TypeTag, HtmlSelectComponent.TypeTag,
+        HtmlSwitchComponent.TypeTag];
     // list of gauges tags to check who as events like mouse click
     static GaugeWithActions = [ApeShapesComponent, PipeComponent, ProcEngComponent, ShapesComponent, HtmlButtonComponent, HtmlSelectComponent,
         ValueComponent, HtmlInputComponent, GaugeSemaphoreComponent, HtmlImageComponent, PanelComponent];
@@ -365,7 +366,7 @@ export class GaugesManager {
     }
 
     getGaugeFromName(gaugeName: string) {
-        const gauge = Object.values(this.mapGauges).find((gauge: any) => gauge.name === gaugeName);
+        const gauge = Object.values(this.mapGauges).find((gauge: any) => gauge?.name === gaugeName);
         return gauge;
     }
 
@@ -527,7 +528,7 @@ export class GaugesManager {
                     });
                     break;
                 } else if (ga.type.startsWith(HtmlTableComponent.TypeTag)) {
-                    if (ga.property.type !== 'history' && this.memorySigGauges[sig.id]) {
+                    if ((ga.property.type === TableType.data || ga.property.options?.realtime) && this.memorySigGauges[sig.id]) {
                         Object.keys(this.memorySigGauges[sig.id]).forEach(k => {
                             if (k === ga.id && this.mapGauges[k]) {
                                 HtmlTableComponent.processValue(ga, svgele, sig, gaugeStatus, this.mapGauges[k]);
@@ -782,14 +783,14 @@ export class GaugesManager {
             this.mapGauges[ga.id] = gauge;
             return gauge;
         } else if (ga.type.startsWith(HtmlInputComponent.TypeTag)) {
-            HtmlInputComponent.initElement(ga, isview);
-            return true;
+            let gauge = HtmlInputComponent.initElement(ga, isview);
+            return gauge || true;
         } else if (ga.type.startsWith(HtmlSelectComponent.TypeTag)) {
-            HtmlSelectComponent.initElement(ga, isview);
-            return true;
+            let gauge = HtmlSelectComponent.initElement(ga, isview);
+            return gauge || true;
         } else if (ga.type.startsWith(GaugeProgressComponent.TypeTag)) {
-            GaugeProgressComponent.initElement(ga);
-            return true;
+            let gauge = GaugeProgressComponent.initElement(ga);
+            return gauge || true;
         } else if (ga.type.startsWith(HtmlSwitchComponent.TypeTag)) {
             let gauge = HtmlSwitchComponent.initElement(ga, res, ref, isview);
             this.mapGauges[ga.id] = gauge;
@@ -806,19 +807,22 @@ export class GaugesManager {
             }
             return gauge;
         } else if (ga.type.startsWith(HtmlIframeComponent.TypeTag)) {
-            HtmlIframeComponent.initElement(ga, isview);
-            return true;
+            let gauge = HtmlIframeComponent.initElement(ga, isview);
+            return gauge || true;
         } else if (ga.type.startsWith(HtmlImageComponent.TypeTag)) {
-            HtmlImageComponent.initElement(ga, isview);
-            return true;
+            let gauge = HtmlImageComponent.initElement(ga, isview);
+            return gauge || true;
         } else if (ga.type.startsWith(PanelComponent.TypeTag)) {
             let gauge: FuxaViewComponent = PanelComponent.initElement(ga, res, ref, this, this.hmiService.hmi, isview, parent);
             this.mapGauges[ga.id] = gauge;
             return gauge;
+        } else if (ga.type.startsWith(HtmlButtonComponent.TypeTag)) {
+            let gauge = HtmlButtonComponent.initElement(ga);
+            return gauge || true;
         } else {
             let ele = document.getElementById(ga.id);
             ele?.setAttribute('data-name', ga.name);
-            return true;
+            return ele || true;
         }
     }
 

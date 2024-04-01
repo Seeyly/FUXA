@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, lastValueFrom } from 'rxjs';
 
 import { EndPointApi } from '../_helpers/endpointapi';
 import { environment } from '../../environments/environment';
@@ -8,7 +8,8 @@ import { Script, ScriptMode } from '../_models/script';
 import { ProjectService } from './project.service';
 import { HmiService, ScriptCommandEnum, ScriptCommandMessage } from './hmi.service';
 import { Utils } from '../_helpers/utils';
-import { TagDaq } from '../_models/device';
+import { DeviceType, TagDaq, TagDevice } from '../_models/device';
+import { DaqQuery } from '../_models/hmi';
 
 @Injectable({
     providedIn: 'root'
@@ -19,7 +20,8 @@ export class ScriptService {
 
     constructor(private http: HttpClient,
                 private projectService: ProjectService,
-                private hmiService: HmiService) {
+                private hmiService: HmiService,
+            ) {
 
     }
 
@@ -31,18 +33,22 @@ export class ScriptService {
                     let params = { script: script };
                     this.http.post<any>(this.endPointConfig + '/api/runscript', { headers: header, params: params }).subscribe(result => {
                         observer.next(result);
+                        observer.complete();
                     }, err => {
                         console.error(err);
                         observer.error(err);
                     });
                 } else {
                     observer.next();
+                    observer.complete();
                 }
             } else {
                 let parameterToAdd = '';
                 script.parameters?.forEach(param => {
                     if (Utils.isNumeric(param.value)) {
                         parameterToAdd += `let ${param.name} = ${param.value};`;
+                    } else if (Utils.isObject(param.value)) {
+                        parameterToAdd += `let ${param.name} = ${JSON.stringify(param.value)};`;
                     } else {
                         parameterToAdd += `let ${param.name} = '${param.value}';`;
                     }
@@ -56,6 +62,7 @@ export class ScriptService {
                     console.error(err);
                     observer.error(err);
                 }
+                observer.complete();
             }
         });
     }
@@ -80,13 +87,17 @@ export class ScriptService {
         code = code.replace(/\$setTagDaqSettings\(/g, 'await this.$setTagDaqSettings(');
         code = code.replace(/\$setView\(/g, 'this.$setView(');
         code = code.replace(/\$enableDevice\(/g, 'this.$enableDevice(');
+        code = code.replace(/\$getDeviceProperty\(/g, 'await this.$getDeviceProperty(');
+        code = code.replace(/\$setDeviceProperty\(/g, 'await this.$setDeviceProperty(');
         code = code.replace(/\$invokeObject\(/g, 'this.$invokeObject(');
+        code = code.replace(/\$runServerScript\(/g, 'this.$runServerScript(');
+        code = code.replace(/\$getHistoricalTags\(/g, 'this.$getHistoricalTags(');
         return code;
     }
 
     public async $getTag(id: string) {
-        let tag = this.projectService.getTagFromId(id);
-        if (!Utils.isNullOrUndefined(tag?.value)) {
+        let tag: TagDevice = this.projectService.getTagFromId(id, true);
+        if (tag?.deviceType === DeviceType.internal) {
             return tag.value;
         }
         let values = await this.projectService.getTagsValues([id]);
@@ -121,11 +132,31 @@ export class ScriptService {
         this.hmiService.deviceEnable(deviceName, enable);
     }
 
-    public $invokeObject(gaugeName: string, fncName: string, params: any) {
+    public async $getDeviceProperty(deviceName: string) {
+        let daqSettings = await this.projectService.runSysFunctionSync('$getDeviceProperty', [deviceName]);
+        return daqSettings;
+    }
+
+    public async $setDeviceProperty(deviceName: string, property: any) {
+        return await this.projectService.runSysFunctionSync('$setDeviceProperty', [deviceName, property]);
+    }
+
+    public $invokeObject(gaugeName: string, fncName: string, ...params: any[]) {
         const gauge = this.hmiService.getGaugeMapped(gaugeName);
         if (gauge[fncName]) {
-            return gauge[fncName](params);
+            return gauge[fncName](...params);
         }
         return null;
+    }
+
+    public async $runServerScript(scriptName: string, ...params: any[]) {
+        let scriptToRun = Utils.clone(this.projectService.getScripts().find(dataScript => dataScript.name == scriptName));
+        scriptToRun.parameters = params;
+        return await lastValueFrom(this.runScript(scriptToRun));
+    }
+
+    public async $getHistoricalTags(tagIds: string[], fromDate: number, toDate: number) {
+        const query: DaqQuery = { sids: tagIds, from: fromDate, to: toDate };
+        return await lastValueFrom(this.hmiService.getDaqValues(query));
     }
 }
